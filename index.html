@@ -13,7 +13,7 @@
   --c-ao:#b08968; --c-emis:#ff7a45; --c-height:#8aa871; --c-alpha:#8d93a1; --c-orm:#c99ad1;
   --mono:ui-monospace,'Cascadia Mono','SF Mono',Menlo,Consolas,monospace;
   --sans:system-ui,-apple-system,'Segoe UI',Roboto,'Noto Sans',sans-serif;
-  --rail:380px; --bar:52px; --rad:10px;
+  --rail:380px; --bar:52px; --rad:10px; --peek:92px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
@@ -40,9 +40,6 @@ button,select,input{font:inherit;color:inherit}
 .tb.primary:hover{filter:brightness(1.06)}
 .tb svg{width:16px;height:16px;flex:0 0 auto}
 select.tb{appearance:none;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239aa1ac' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
-#selFbx{max-width:min(200px,32vw);overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);font-size:12px}
-.tb.mini{height:26px;padding:0 9px;font-size:12px;border-radius:6px;margin:3px 3px 0 0;background:var(--panel2)}
-.tb.mini:hover{border-color:var(--acc)}
 #spacer{flex:1 0 12px}
 @media (max-width:520px){ .tb .lbl{display:none} .tb{padding:0 10px} }
 
@@ -68,9 +65,44 @@ body.dragging #stage::after{content:"Drop to load";position:absolute;inset:10px;
   display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;
   border:2px dashed var(--acc);border-radius:14px;background:rgba(22,24,29,.82);color:var(--acc)}
 
-#hud{position:absolute;left:10px;bottom:10px;z-index:6;display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+/* ---- bottom dock: HUD chips + FBX thumbnail bar, floating over the stage ---- */
+#dock{position:absolute;left:0;right:0;bottom:0;z-index:8;display:flex;flex-direction:column;gap:7px;
+  padding:0 10px 10px;pointer-events:none}
+body.sheet #dock{bottom:var(--peek)}          /* clear the report sheet's peek */
+#dockHead{display:flex;align-items:flex-end;gap:8px;min-width:0}
+#hud{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
 .chip{pointer-events:auto;font:11.5px var(--mono);color:var(--mut);background:rgba(28,31,37,.85);
   border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+
+#fbxToggle{margin-left:auto;flex:0 0 auto;pointer-events:auto;height:28px;padding:0 10px;font-size:12px;
+  border-radius:8px;background:rgba(28,31,37,.88);backdrop-filter:blur(4px)}
+#fbxToggle .cnt{font:11px/1 var(--mono);color:var(--dim)}
+#fbxToggle svg{width:11px;height:11px;transition:transform .18s ease}
+body.dock-off #fbxToggle svg{transform:rotate(180deg)}
+body:not(.has-fbx) #dock{display:none}
+
+#fbxBar{pointer-events:auto;display:flex;gap:8px;padding:8px;overflow-x:auto;overflow-y:hidden;
+  background:rgba(24,27,33,.86);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;
+  overscroll-behavior-x:contain;scroll-padding:8px;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+#fbxBar::-webkit-scrollbar{height:8px}
+#fbxBar::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+body.dock-off #fbxBar{display:none}
+
+.fbxTile{flex:0 0 auto;width:96px;padding:0;border:0;background:none;cursor:pointer;text-align:left}
+.fbxTile .shot{display:flex;align-items:center;justify-content:center;position:relative;
+  width:96px;height:72px;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);
+  background:repeating-conic-gradient(#22262d 0 25%,#1a1d23 0 50%) 0 0/10px 10px}
+.fbxTile .shot img{width:100%;height:100%;object-fit:cover;display:block}
+.fbxTile:hover .shot{border-color:var(--mut)}
+.fbxTile[aria-pressed="true"] .shot{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.fbxTile .nm{display:block;margin-top:4px;font:11px/1.3 var(--mono);color:var(--mut);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbxTile[aria-pressed="true"] .nm{color:var(--ink)}
+.fbxTile .tris{position:absolute;right:3px;bottom:3px;font:9.5px/1 var(--mono);color:var(--ink);
+  background:rgba(12,13,17,.72);border-radius:4px;padding:2.5px 4px}
+.fbxTile .ph{display:flex;color:var(--dim)}
+.fbxTile .ph svg{width:24px;height:24px}
 
 #toasts{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;
   display:flex;flex-direction:column;gap:6px;align-items:center;pointer-events:none;width:min(92%,460px)}
@@ -190,7 +222,6 @@ body.sheet #grab{display:block}
       <b>gizmo<i>.</i></b>
     </div>
     <button class="tb primary" id="btnOpen"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 10V2m0 0L5 5m3-3l3 3M2 10v3h12v-3"/></svg><span class="lbl">Load files</span></button>
-    <select class="tb" id="selFbx" aria-label="Which FBX to display" hidden></select>
     <div id="spacer"></div>
     <select class="tb" id="selPreset" aria-label="Lighting preset"></select>
     <button class="tb" id="btnWire" aria-pressed="false" title="Wireframe"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M8 1.5l6 3.5v6l-6 3.5L2 11V5l6-3.5zM2 5l6 3.5m0 0L14 5M8 8.5v6"/></svg><span class="lbl">Wire</span></button>
@@ -213,7 +244,17 @@ body.sheet #grab{display:block}
           <button class="tb primary" id="btnOpen2">Choose files</button>
         </div>
       </div>
-      <div id="hud"></div>
+      <div id="dock">
+        <div id="dockHead">
+          <div id="hud"></div>
+          <button class="tb" id="fbxToggle" aria-expanded="true" aria-controls="fbxBar"
+                  title="Hide or show the model bar">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3.5 10.5L8 6l4.5 4.5"/></svg>
+            <span class="lbl">Models</span><span class="cnt" id="fbxCount"></span>
+          </button>
+        </div>
+        <div id="fbxBar" role="group" aria-label="Loaded FBX models"></div>
+      </div>
     </div>
 
     <aside id="panel" aria-label="Wiring report">
@@ -252,7 +293,9 @@ body.sheet #grab{display:block}
       <p><span class="bdg src-fbx">from FBX</span> the FBX itself referenced this file &nbsp;·&nbsp; <span class="bdg src-name">name match</span> wired by suffix convention &nbsp;·&nbsp; <span class="bdg src-orm">packed</span> one channel of an ORM/ARM map &nbsp;·&nbsp; <span class="bdg src-assumed">assumed</span> best guess — double-check it.</p>
       <p>Dashed rows are empty slots. Below the materials you'll find files that went unused (with the reason) and anything the FBX references that you didn't provide. A green line means the pack is complete.</p>
       <div class="secTitle">4 · Viewer</div>
-      <p>Drag to orbit, pinch or scroll to zoom, two-finger drag (or right-drag) to pan. Toolbar: lighting presets, wireframe, shadows, re-frame, and PNG capture of the current view. With several FBX files loaded, a switcher appears next to Load — the report follows whichever model is shown. On a wide screen, drag the report's left edge to resize it.</p>
+      <p>Drag to orbit, pinch or scroll to zoom, two-finger drag (or right-drag) to pan. Toolbar: lighting presets, wireframe, shadows, re-frame, and PNG capture of the current view. On a wide screen, drag the report's left edge to resize it.</p>
+      <div class="secTitle">5 · The model bar</div>
+      <p>Every FBX you load gets a tile in the strip along the bottom of the viewport — scroll it sideways if the pack has more than fits. Previews are rendered in the background, one model at a time, so tiles start as spinners and fill in; the triangle count sits in the corner of each. Click a tile to show that model — the report follows it. <b>Models</b> above the strip hides and shows it.</p>
     </div>
   </div>
 </div>
@@ -4137,6 +4180,7 @@ const loading = (on, msg) => { $('#loading').classList.toggle('on', !!on); if (m
 const store = new Map();       // lower name -> {name, bytes, kind, url, tex:Map(colorSpace->Texture), usedAs:Set, reasons:Set}
 let model = null, matReports = [], missingRefs = new Set(), generalNotes = [];
 let fbxEntryName = null, preferredFbx = null, modelStats = null;
+let modelName = null;          // which FBX the object currently in the scene came from
 
 const fmtN = n => Math.round(n).toLocaleString('en-US');
 const fmtC = n => new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(Math.round(n));
@@ -4183,6 +4227,7 @@ function addFile(name, bytes) {
   const old = store.get(key);
   if (old && old.url) URL.revokeObjectURL(old.url);
   store.set(key, { name, bytes, kind, ext, url: null, tex: new Map(), usedAs: new Set(), reasons: new Set() });
+  return kind;
 }
 function urlFor(f) {
   if (!f.url) f.url = URL.createObjectURL(new Blob([f.bytes]));
@@ -4194,6 +4239,7 @@ async function intake(fileList) {
   const files = [...fileList];
   if (!files.length) return;
   loading(true, 'Reading files…');
+  let newTex = false;
   try {
     for (const f of files) {
       const ext = extOf(f.name);
@@ -4205,13 +4251,15 @@ async function intake(fileList) {
         let n = 0;
         for (const [path, bytes] of Object.entries(entries)) {
           if (path.endsWith('/') || path.includes('__MACOSX') || basename(path).startsWith('.')) continue;
-          addFile(path, bytes); n++;
+          if (addFile(path, bytes) === 'tex') newTex = true;
+          n++;
         }
         if (!n) toast(`<b>${esc(f.name)}</b> unzipped, but contained no usable files.`, 'warn');
       } else {
-        addFile(f.name, buf);
+        if (addFile(f.name, buf) === 'tex') newTex = true;
       }
     }
+    if (newTex) invalidateThumbs();   // fresh maps can change how every model looks
     await rebuild();
   } catch (e) {
     console.error(e);
@@ -4258,6 +4306,22 @@ function classifyTexName(name) {
   return { slot: null, prefix: s };
 }
 
+// a texture whose bytes actually decoded (a missing file resolves to an empty image)
+const texAlive = t => {
+  const i = t && t.image;
+  return !!(i && ((i.width && i.height) || (i.data && i.data.length)));
+};
+// how well a material name matches a texture-group prefix (both normalized)
+const score = (mk, gk) => {
+  if (!gk && !mk) return 1;
+  if (!gk) return 0;
+  if (mk === gk) return 1000 + gk.length;
+  if (mk && (mk.includes(gk) || gk.includes(mk))) return 500 + Math.min(mk.length, gk.length);
+  let i = 0; while (i < mk.length && i < gk.length && mk[i] === gk[i]) i++;
+  return i >= 3 ? i : 0;
+};
+const allFbx = () => [...store.values()].filter(f => f.kind === 'fbx').sort((a, b) => a.name.localeCompare(b.name));
+
 /* ============================== texture loading ============================== */
 const tgaLoader = new TGALoader();
 function loadTexFromFile(f, srgb) {
@@ -4283,7 +4347,7 @@ async function rebuild() {
   missingRefs = new Set(); generalNotes = []; matReports = [];
   for (const f of store.values()) { f.usedAs.clear(); f.reasons.clear(); }
 
-  const fbxes = [...store.values()].filter(f => f.kind === 'fbx').sort((a, b) => a.name.localeCompare(b.name));
+  const fbxes = allFbx();
   if (!store.size) return;
   if (!fbxes.length) {
     renderReport();
@@ -4293,13 +4357,7 @@ async function rebuild() {
   let fbxFile = preferredFbx ? store.get(preferredFbx) : null;
   if (!fbxFile || fbxFile.kind !== 'fbx') fbxFile = fbxes[0];
   fbxEntryName = fbxFile.name;
-  updateFbxSelect(fbxes, fbxFile);
-  if (fbxes.length > 1)
-    generalNotes.push({ kind: 'warn', html:
-      `Multiple FBX files — showing <b>${esc(fbxFile.name)}</b>. Switch to: ` +
-      fbxes.filter(f => f !== fbxFile)
-        .map(f => `<button class="tb mini" data-fbx="${esc(f.name.toLowerCase())}">${esc(f.name)}</button>`)
-        .join(' ') });
+  renderFbxBar();
 
   loading(true, `Parsing ${fbxFile.name}…`);
   await new Promise(r => setTimeout(r, 30)); // let the overlay paint
@@ -4335,6 +4393,7 @@ async function rebuild() {
     console.error(e);
     loading(false);
     toast(`<b>Couldn't parse ${esc(fbxFile.name)}.</b> ${esc(e.message || e)} — the file may be corrupt, ASCII-FBX from a very old exporter, or not an FBX at all.`, 'err', 12000);
+    queueThumbs();
     return;
   }
   // wait for any in-flight texture loads kicked off by the parse
@@ -4353,10 +4412,6 @@ async function rebuild() {
     if (t.userData.__srcUrl) return blobToFile.get(t.userData.__srcUrl) || null;
     const src = t.image && t.image.src;
     return src ? (blobToFile.get(src) || null) : null;
-  };
-  const texAlive = t => {
-    const i = t && t.image;
-    return !!(i && ((i.width && i.height) || (i.data && i.data.length)));
   };
   function convert(m) {
     if (converted.has(m.uuid)) return converted.get(m.uuid);
@@ -4405,6 +4460,7 @@ async function rebuild() {
   if (!uniqMats.length) {
     loading(false);
     toast(`<b>${esc(fbxFile.name)}</b> parsed but contains no meshes/materials to display.`, 'err');
+    queueThumbs();
     return;
   }
 
@@ -4429,14 +4485,6 @@ async function rebuild() {
       if (f) return normKey(classifyTexName(f.name).prefix);
     }
     return null;
-  };
-  const score = (mk, gk) => {
-    if (!gk && !mk) return 1;
-    if (!gk) return 0;
-    if (mk === gk) return 1000 + gk.length;
-    if (mk && (mk.includes(gk) || gk.includes(mk))) return 500 + Math.min(mk.length, gk.length);
-    let i = 0; while (i < mk.length && i < gk.length && mk[i] === gk[i]) i++;
-    return i >= 3 ? i : 0;
   };
   const claim = new Map(); // material.uuid -> groupKey
   const claimedGroups = new Set();
@@ -4532,24 +4580,296 @@ async function rebuild() {
   setModel(root);
   renderReport();
   loading(false);
+  queueThumbs();
 }
 
-/* ============================== FBX switcher ============================== */
-function updateFbxSelect(fbxes, current) {
-  const s = $('#selFbx');
-  fbxes = fbxes || [...store.values()].filter(f => f.kind === 'fbx').sort((a, b) => a.name.localeCompare(b.name));
-  s.hidden = fbxes.length < 2;
-  s.innerHTML = '';
-  for (const f of fbxes) s.append(new Option(f.name, f.name.toLowerCase()));
-  if (current) s.value = current.name.toLowerCase();
+/* ============================== model bar (FBX thumbnails) ==============================
+   Every loaded FBX gets a tile in a horizontally scrollable bar floating at the bottom of
+   the stage. Previews are baked one model at a time in the background: parse -> best-effort
+   base-color wiring -> one offscreen-sized frame through the live renderer -> dispose. */
+
+const THUMB_W = 192, THUMB_H = 144;              // capture size (tiles display at half)
+const THUMB_BG = new THREE.Color(0x1a1d23);
+const thumbs = new Map();   // lower name -> {state:'wait'|'busy'|'ok'|'fail', url, tris}
+const tiles = new Map();    // lower name -> tile element
+const capQueue = [];        // capture jobs, drained one per frame by the render loop
+let thumbBusy = false, thumbGen = 0;   // bumped on invalidation so in-flight bakes discard themselves
+
+/* ---- capture: borrow the live renderer for one frame, inside the animation loop ---- */
+const requestCapture = obj => new Promise(res => capQueue.push({ obj, res }));
+
+function runCapture(job) {
+  const size = renderer.getSize(new THREE.Vector2());
+  const bg = scene.background;
+  const hidden = [];
+  for (const o of [model, grid, shadowCatcher])
+    if (o && o !== job.obj && o.visible) { o.visible = false; hidden.push(o); }
+  const detached = job.obj.parent !== scene;
+  if (detached) scene.add(job.obj);
+  if (wire) setWire(job.obj, false);
+  let out = null;
+  try {
+    scene.background = THUMB_BG;
+    fitShadows(job.obj);
+    renderer.setSize(THUMB_W, THUMB_H, false);
+    thumbCam.aspect = THUMB_W / THUMB_H;
+    if (frameObject(job.obj, thumbCam, 1.3)) {
+      renderer.render(scene, thumbCam);
+      const src = renderer.domElement;
+      out = document.createElement('canvas');
+      out.width = src.width; out.height = src.height;
+      out.getContext('2d').drawImage(src, 0, 0);
+    }
+  } catch (e) { console.error(e); out = null; }
+  finally {
+    if (wire) setWire(job.obj, true);
+    if (detached) scene.remove(job.obj);
+    for (const o of hidden) o.visible = true;
+    scene.background = bg;
+    renderer.setSize(size.x, size.y, false);
+    fitShadows();
+  }
+  job.res(out);
 }
-$('#selFbx').onchange = e => { preferredFbx = e.target.value; rebuild(); };
-$('#panelBody').addEventListener('click', e => {
-  const b = e.target.closest('[data-fbx]');
-  if (!b) return;
-  preferredFbx = b.dataset.fbx;
+const canvasURL = c => new Promise(res =>
+  c ? c.toBlob(b => res(b ? URL.createObjectURL(b) : null), 'image/png') : res(null));
+
+/* ---- parse an FBX purely for its preview: no global state touched ---- */
+async function parseForThumb(f) {
+  const manager = new THREE.LoadingManager();
+  let queued = 0, allDone = false, finish = null;
+  manager.onStart = () => { queued++; };
+  manager.onLoad = () => { allDone = true; if (finish) finish(); };
+  manager.setURLModifier(url => {
+    if (url.startsWith('blob:') || url.startsWith('data:')) return url;
+    const t = store.get(basename(decodeURIComponent(url)).toLowerCase());
+    return t && t.kind === 'tex' ? urlFor(t) : 'data:,';
+  });
+  manager.addHandler(/\.tga$/i, new TGALoader(manager));
+
+  let root;
+  try {
+    const b = f.bytes;
+    root = new FBXLoader(manager).parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength), '');
+  } catch (e) { console.error(e); return null; }
+
+  if (queued && !allDone) await new Promise(res => {          // wait on textures the FBX itself asked for
+    let settled = false;
+    finish = () => { if (!settled) { settled = true; res(); } };
+    setTimeout(finish, 4000);
+  });
+  await standardizeForThumb(root);
+  return root;
+}
+
+// base-color candidates keyed by normalized prefix — the same classifier the report wiring uses
+function baseColorGroups() {
+  const g = new Map();
+  for (const f of store.values()) {
+    if (f.kind !== 'tex') continue;
+    const cl = f.class || classifyTexName(f.name);
+    if (cl.slot !== 'map') continue;
+    const k = normKey(cl.prefix);
+    if (!g.has(k)) g.set(k, f);
+  }
+  return g;
+}
+
+// Phong -> Standard so previews get the same lighting as the viewport, plus a base-color guess.
+// Roughness/metal/AO are invisible at 96px, so the full wiring pass is skipped here.
+async function standardizeForThumb(root) {
+  const groups = baseColorGroups(), keys = [...groups.keys()];
+  const conv = new Map(), jobs = [];
+  const toStd = m => {
+    if (!m) return m;
+    if (conv.has(m.uuid)) return conv.get(m.uuid);
+    let s = m;
+    if (!m.isMeshStandardMaterial) {
+      s = new THREE.MeshStandardMaterial({
+        name: m.name || 'material',
+        color: (m.color && m.color.clone()) || new THREE.Color(0xffffff),
+        map: m.map || null, normalMap: m.normalMap || null, emissiveMap: m.emissiveMap || null,
+        emissive: (m.emissive && m.emissive.clone()) || new THREE.Color(0x000000),
+        transparent: !!m.transparent, opacity: m.opacity ?? 1,
+        side: m.side ?? THREE.FrontSide, roughness: 0.85, metalness: 0.0,
+        vertexColors: !!m.vertexColors,
+      });
+    }
+    for (const k of ['map', 'normalMap', 'emissiveMap']) if (s[k] && !texAlive(s[k])) s[k] = null;
+    if (s.map) { s.map.colorSpace = THREE.SRGBColorSpace; s.color.set(0xffffff); }
+    if (!s.emissiveMap) {                                    // exporters' white self-glow washes previews out
+      const e = s.emissive;
+      if (e.r > 0.6 && e.g > 0.6 && e.b > 0.6) e.set(0x000000);
+    }
+    if (!s.map && keys.length) {
+      const mk = normKey(m.name || '');
+      let best = null, bestS = 0;
+      for (const k of keys) { const sc = score(mk, k); if (sc > bestS) { bestS = sc; best = k; } }
+      if (best === null && keys.length === 1) best = keys[0];
+      if (best !== null) jobs.push(loadTexFromFile(groups.get(best), true)
+        .then(t => { s.map = t; s.color.set(0xffffff); s.needsUpdate = true; })
+        .catch(() => {}));
+    }
+    conv.set(m.uuid, s);
+    return s;
+  };
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = true;
+    o.material = Array.isArray(o.material) ? o.material.map(toStd) : toStd(o.material);
+  });
+  await Promise.allSettled(jobs);
+}
+
+// textures cached on a store entry are shared with the live model — only free what this parse made
+function disposeThumbRoot(root) {
+  const mats = new Set();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    if (o.geometry) o.geometry.dispose();
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m) mats.add(m);
+  });
+  for (const m of mats) {
+    for (const k of ['map', 'normalMap', 'bumpMap', 'emissiveMap', 'alphaMap',
+                     'roughnessMap', 'metalnessMap', 'aoMap', 'specularMap', 'lightMap', 'envMap']) {
+      const t = m[k];
+      if (t && t.isTexture && !t.userData.__file) t.dispose();
+    }
+    m.dispose();
+  }
+}
+
+/* ---- queue: one model at a time, yielding between so the viewport stays live ---- */
+async function bakeThumb(f) {
+  const key = f.name.toLowerCase(), gen = thumbGen;
+  let root = null, canvas = null, tris = 0;
+  try {
+    if (model && modelName && key === modelName.toLowerCase()) {
+      canvas = await requestCapture(model);           // on screen already — no reparse, real wiring
+      tris = modelStats ? modelStats.tris : 0;
+    } else {
+      root = await parseForThumb(f);
+      if (root) { tris = computeStats(root).tris; canvas = await requestCapture(root); }
+    }
+  } catch (e) { console.error(e); }
+  finally { if (root) disposeThumbRoot(root); }
+  const url = await canvasURL(canvas);
+  if (gen !== thumbGen) {                    // files changed under us — this preview is already stale
+    if (url) URL.revokeObjectURL(url);
+    return;
+  }
+  const prev = thumbs.get(key);
+  if (prev && prev.url) URL.revokeObjectURL(prev.url);
+  thumbs.set(key, url ? { state: 'ok', url, tris } : { state: 'fail' });
+  renderFbxBar();
+}
+
+async function runThumbQueue() {
+  if (thumbBusy) return;
+  thumbBusy = true;
+  try {
+    for (;;) {
+      const f = allFbx().find(x => (thumbs.get(x.name.toLowerCase()) || {}).state === 'wait');
+      if (!f) break;
+      const key = f.name.toLowerCase(), gen = thumbGen;
+      thumbs.set(key, { state: 'busy' });
+      renderFbxBar();
+      try { await bakeThumb(f); }
+      catch (e) { console.error(e); if (gen === thumbGen) { thumbs.set(key, { state: 'fail' }); renderFbxBar(); } }
+      await new Promise(r => setTimeout(r, 0));       // let the UI breathe between models
+    }
+  } finally { thumbBusy = false; }
+}
+function queueThumbs() {
+  for (const f of allFbx()) {
+    const k = f.name.toLowerCase();
+    if (!thumbs.has(k)) thumbs.set(k, { state: 'wait' });
+  }
+  renderFbxBar();
+  runThumbQueue();
+}
+function invalidateThumbs() {
+  thumbGen++;
+  for (const t of thumbs.values()) if (t.url) URL.revokeObjectURL(t.url);
+  thumbs.clear();
+}
+
+/* ---- tiles ---- */
+const CUBE_SVG = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M8 1.6l5.6 3.2v6.4L8 14.4l-5.6-3.2V4.8L8 1.6zM2.4 4.8L8 8m0 0l5.6-3.2M8 8v6.4"/></svg>';
+
+function renderFbxBar() {
+  const bar = $('#fbxBar'), list = allFbx();
+  document.body.classList.toggle('has-fbx', list.length > 0);
+  $('#fbxCount').textContent = list.length > 1 ? String(list.length) : '';
+
+  const want = new Set(list.map(f => f.name.toLowerCase()));
+  for (const [k, el] of tiles) if (!want.has(k)) { el.remove(); tiles.delete(k); }
+
+  const activeKey = fbxEntryName ? fbxEntryName.toLowerCase() : null;
+  let activeEl = null;
+  for (const f of list) {
+    const k = f.name.toLowerCase();
+    let el = tiles.get(k);
+    if (!el) {
+      el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'fbxTile';
+      el.dataset.fbx = k;
+      el.innerHTML = '<span class="shot"></span><span class="nm"></span>';
+      el.querySelector('.nm').textContent = f.name;
+      tiles.set(k, el);
+    }
+    bar.appendChild(el);                              // re-appending an existing node just reorders it
+    const on = k === activeKey;
+    el.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) activeEl = el;
+
+    const t = thumbs.get(k) || { state: 'wait' };
+    el.title = f.name + (t.tris ? ` — ${fmtN(t.tris)} triangles` : '') +
+      (t.state === 'fail' ? ' — preview unavailable' : '');
+    const shot = el.querySelector('.shot');
+    const sig = t.state + '|' + (t.url || '') + '|' + (t.tris || 0);
+    if (shot.dataset.sig === sig) continue;
+    shot.dataset.sig = sig;
+    shot.innerHTML =
+      t.state === 'ok'   ? `<img alt="" src="${t.url}">${t.tris ? `<span class="tris">${fmtC(t.tris)}</span>` : ''}`
+    : t.state === 'fail' ? `<span class="ph">${CUBE_SVG}</span>`
+    : '<span class="spin"></span>';
+  }
+  if (activeEl) revealTile(activeEl);
+}
+
+function revealTile(el) {
+  const bar = el.parentElement;
+  if (!bar) return;
+  const l = el.offsetLeft, r = l + el.offsetWidth;
+  if (l < bar.scrollLeft) bar.scrollTo({ left: l - 8, behavior: 'smooth' });
+  else if (r > bar.scrollLeft + bar.clientWidth) bar.scrollTo({ left: r - bar.clientWidth + 8, behavior: 'smooth' });
+}
+
+$('#fbxBar').addEventListener('click', e => {
+  const t = e.target.closest('.fbxTile');
+  if (!t || t.dataset.fbx === (fbxEntryName || '').toLowerCase()) return;
+  preferredFbx = t.dataset.fbx;
   rebuild();
 });
+$('#fbxBar').addEventListener('keydown', e => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const t = e.target.closest('.fbxTile');
+  const next = t && (e.key === 'ArrowRight' ? t.nextElementSibling : t.previousElementSibling);
+  if (!next) return;
+  e.preventDefault(); next.focus(); revealTile(next);
+});
+$('#fbxBar').addEventListener('wheel', e => {          // a plain mouse wheel should scroll the strip
+  const bar = e.currentTarget;
+  if (bar.scrollWidth <= bar.clientWidth || Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+  e.preventDefault();
+  bar.scrollLeft += e.deltaY;
+}, { passive: false });
+$('#fbxToggle').onclick = e => {
+  const off = document.body.classList.toggle('dock-off');
+  e.currentTarget.setAttribute('aria-expanded', off ? 'false' : 'true');
+};
 
 /* ============================== report ============================== */
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -4691,6 +5011,7 @@ stage.insertBefore(renderer.domElement, stage.firstChild);
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
 camera.position.set(3, 2, 5);
+const thumbCam = new THREE.PerspectiveCamera(45, THUMB_W / THUMB_H, 0.1, 1000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
@@ -4723,9 +5044,10 @@ function applyPreset(i) {
   });
   fitShadows();
 }
-function fitShadows() {
-  if (!model) return;
-  const box = new THREE.Box3().setFromObject(model);
+function fitShadows(target) {
+  target = target || model;
+  if (!target) return;
+  const box = new THREE.Box3().setFromObject(target);
   if (box.isEmpty()) return;
   const sph = box.getBoundingSphere(new THREE.Sphere());
   const r = Math.max(sph.radius, 1e-4);
@@ -4752,6 +5074,7 @@ function setModel(root) {
   if (grid) { scene.remove(grid); grid = null; }
   if (shadowCatcher) { scene.remove(shadowCatcher); shadowCatcher = null; }
   model = root; scene.add(model);
+  modelName = fbxEntryName;
   modelStats = computeStats(root);
   $('#empty').style.display = 'none';
   frameModel();
@@ -4777,29 +5100,37 @@ function setModel(root) {
     <span class="chip">${fmtC(modelStats.tris)} tris · ${fmtC(modelStats.verts)} verts</span>
     <span class="chip">${size.x.toFixed(1)} × ${size.y.toFixed(1)} × ${size.z.toFixed(1)} units</span>`;
 }
+// park a camera so `obj` fills the frame; returns the distance used, or 0 if there's nothing to see
+function frameObject(obj, cam, pad = 1.5) {
+  const box = new THREE.Box3().setFromObject(obj);
+  if (box.isEmpty()) return 0;
+  const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z) || 1;
+  const fitV = (maxDim / 2) / Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+  const dist = Math.max(fitV, fitV / (cam.aspect || 1)) * pad;   // also fit across on narrow frames
+  cam.position.set(c.x + dist * 0.7, c.y + dist * 0.45, c.z + dist * 0.7);
+  cam.near = Math.max(dist / 500, 0.001);
+  cam.far = dist * 200;
+  cam.lookAt(c);
+  cam.updateProjectionMatrix();
+  return dist;
+}
 function frameModel() {
   if (!model) return;
-  const box = new THREE.Box3().setFromObject(model);
-  if (box.isEmpty()) return;
-  const size = box.getSize(new THREE.Vector3()), c = box.getCenter(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  const dist = (maxDim / 2) / Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 1.5;
-  camera.position.set(c.x + dist * 0.7, c.y + dist * 0.45, c.z + dist * 0.7);
-  camera.near = Math.max(dist / 500, 0.001);
-  camera.far = dist * 200;
-  camera.updateProjectionMatrix();
-  controls.target.copy(c);
+  const dist = frameObject(model, camera, 1.5);
+  if (!dist) return;
+  controls.target.copy(new THREE.Box3().setFromObject(model).getCenter(new THREE.Vector3()));
   controls.minDistance = dist / 50; controls.maxDistance = dist * 20;
   controls.update();
 }
 let wire = false;
-function applyWire() {
-  if (!model) return;
-  model.traverse(o => {
+function setWire(obj, on) {
+  obj.traverse(o => {
     if (!o.isMesh) return;
-    for (const m of Array.isArray(o.material) ? o.material : [o.material]) m.wireframe = wire;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m) m.wireframe = on;
   });
 }
+function applyWire() { if (model) setWire(model, wire); }
 $('#btnWire').onclick = e => { wire = !wire; e.currentTarget.setAttribute('aria-pressed', wire); applyWire(); };
 $('#btnShadow').onclick = e => {
   shadowsOn = !shadowsOn;
@@ -4824,8 +5155,9 @@ $('#btnClear').onclick = () => {
   if (model) scene.remove(model); if (grid) scene.remove(grid);
   if (shadowCatcher) { scene.remove(shadowCatcher); shadowCatcher = null; }
   model = null; grid = null; matReports = []; missingRefs.clear(); generalNotes = [];
-  fbxEntryName = null; preferredFbx = null; modelStats = null;
-  updateFbxSelect();
+  fbxEntryName = null; preferredFbx = null; modelStats = null; modelName = null;
+  invalidateThumbs();
+  renderFbxBar();
   $('#empty').style.display = ''; $('#hud').innerHTML = '';
   renderReport();
 };
@@ -4838,7 +5170,12 @@ function resize() {
   camera.updateProjectionMatrix();
 }
 new ResizeObserver(resize).observe(stage);
-renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+renderer.setAnimationLoop(() => {
+  controls.update();
+  // one thumbnail capture per frame, before the real render — the hijacked frame is never presented
+  if (capQueue.length) runCapture(capQueue.shift());
+  renderer.render(scene, camera);
+});
 
 /* ============================== intake wiring ============================== */
 const fi = $('#fileInput');
@@ -4872,7 +5209,8 @@ if (screen.orientation) screen.orientation.addEventListener('change', () => setT
 
 /* bottom sheet: peek / half / full with drag */
 let sheetState = 'peek';
-const SNAPS = { peek: () => 1 - 92 / panelH(), half: () => 0.55, full: () => 0.04 };
+const peekPx = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--peek')) || 92;
+const SNAPS = { peek: () => 1 - peekPx() / panelH(), half: () => 0.55, full: () => 0.04 };
 const panel = $('#panel');
 const panelH = () => panel.getBoundingClientRect().height || innerHeight * 0.88;
 function setSheet(state) {
